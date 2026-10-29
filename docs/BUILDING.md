@@ -6,7 +6,7 @@ Install the host tools with the Ubuntu package manager:
 
 ```sh
 sudo apt update
-sudo apt install clang lld make curl xorriso qemu-system-x86
+sudo apt install build-essential binutils clang curl file xorriso qemu-system-x86
 ```
 
 VMware is an additional test environment and is not required for compilation.

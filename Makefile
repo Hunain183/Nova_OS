@@ -18,7 +18,8 @@ CFLAGS := -std=c11 -O2 -Wall -Wextra -Werror \
            -ffreestanding -fno-builtin -fno-stack-protector -fno-pie \
            -fno-asynchronous-unwind-tables -mno-red-zone -mno-sse \
            -mno-mmx -mno-80387 -mcmodel=kernel -m64 -Iinclude
-LDFLAGS := -nostdlib -static -m elf_x86_64 -T linker.ld -z max-page-size=0x1000
+LDFLAGS := -nostdlib -static -m elf_x86_64 -T linker.ld \
+		   -z max-page-size=0x1000 -z noexecstack
 
 .PHONY: all kernel iso run debug clean
 

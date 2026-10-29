@@ -5,8 +5,10 @@
 The repository was inspected on 2026-10-29. Clang 18, GCC 13, GNU Make, and
 GNU ld are present. Network access to the official Limine repository works.
 `make clean && make kernel` passed with no warnings. The resulting file is an
-ELF64 x86-64 executable, and its Limine request sections were confirmed with
-`readelf` and `nm`.
+ELF64 x86-64 executable with entry point `0xffffffff80001080`; its two
+nonempty `PT_LOAD` segments are in the fixed higher half at
+`0xffffffff80000000` and `0xffffffff80002000`, with `0x1000` alignment. Its
+Limine request sections were confirmed with `readelf` and `nm`.
 
 `make iso` downloaded the pinned Limine v12.9.6 package and built its host tool,
 then stopped because `xorriso` is not installed. `qemu-system-x86_64` is also
