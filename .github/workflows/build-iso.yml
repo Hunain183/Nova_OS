@@ -1,0 +1,75 @@
+name: Build NovaOS ISO
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-iso:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends --yes \
+            binutils \
+            build-essential \
+            clang \
+            curl \
+            file \
+            xorriso
+
+      - name: Show toolchain versions
+        run: |
+          clang --version
+          ld --version | head -n 1
+          make --version | head -n 1
+          xorriso --version | head -n 1
+
+      - name: Build kernel and ISO
+        run: |
+          set -o pipefail
+          make clean
+          mkdir -p build/logs
+          {
+            make kernel
+            make iso
+          } 2>&1 | tee build/logs/build.log
+
+      - name: Verify ISO artifact
+        run: |
+          set -eu
+          test -f build/NovaOS.iso
+          test -s build/NovaOS.iso
+          test "$(basename "$(readlink -f build/NovaOS.iso)")" = "NovaOS.iso"
+          file build/NovaOS.iso
+          sha256sum build/NovaOS.iso | tee build/logs/NovaOS.iso.sha256
+          xorriso -indev build/NovaOS.iso -toc 2>&1 | tee build/logs/iso-toc.log
+
+      - name: Upload NovaOS ISO
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: NovaOS-ISO
+          path: build/NovaOS.iso
+          if-no-files-found: error
+
+      - name: Upload build logs after failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: NovaOS-build-logs-${{ github.run_id }}
+          path: build/logs/
+          if-no-files-found: ignore
