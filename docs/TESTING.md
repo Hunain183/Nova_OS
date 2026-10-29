@@ -13,7 +13,9 @@ Limine request sections were confirmed with `readelf` and `nm`.
 `make iso` downloaded the pinned Limine v12.9.6 package and built its host tool,
 then stopped because `xorriso` is not installed. `qemu-system-x86_64` is also
 not installed. Therefore no ISO or runtime boot result is claimed from this
-container yet.
+container yet. The kernel now uses a Limine-provided 32-bit RGB framebuffer
+when available and retains a BIOS VGA fallback, but this runtime path remains
+untested here.
 
 ## Milestone 1 procedure
 
@@ -25,5 +27,6 @@ After installing the dependencies in [BUILDING.md](BUILDING.md):
 4. Attach the same ISO to a VMware x86-64 virtual machine and record the
    firmware mode and result.
 
-The kernel output is written by NovaOS directly to VGA text memory. A Linux
-installation or desktop application inside the guest is not involved.
+The kernel output is written by NovaOS directly to the Limine framebuffer or
+VGA text memory. A Linux installation or desktop application inside the guest
+is not involved.
