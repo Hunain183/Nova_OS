@@ -21,7 +21,7 @@ CFLAGS := -std=c11 -O2 -Wall -Wextra -Werror \
 LDFLAGS := -nostdlib -static -m elf_x86_64 -T linker.ld \
 		   -z max-page-size=0x1000 -z noexecstack
 
-.PHONY: all kernel iso run debug clean
+.PHONY: all kernel iso verify run debug clean
 
 all: iso
 
@@ -33,8 +33,11 @@ $(BUILD_DIR):
 $(BUILD_DIR)/main.o: kernel/main.c include/limine.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(KERNEL): $(BUILD_DIR)/main.o linker.ld
-	$(LD) $(LDFLAGS) -o $@ $(BUILD_DIR)/main.o
+$(BUILD_DIR)/interrupts.o: kernel/interrupts.S | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(KERNEL): $(BUILD_DIR)/main.o $(BUILD_DIR)/interrupts.o linker.ld
+	$(LD) $(LDFLAGS) -o $@ $(BUILD_DIR)/main.o $(BUILD_DIR)/interrupts.o
 
 $(LIMINE_DIR)/limine.c: $(LIMINE_ARCHIVE)
 	tar -xzf $< -C $(BUILD_DIR)
@@ -64,6 +67,9 @@ $(ISO): $(KERNEL) limine.conf $(LIMINE_TOOL)
 	$(LIMINE_TOOL) bios-install $@
 
 iso: $(ISO)
+
+verify:
+	./scripts/verify.sh
 
 run: $(ISO)
 	command -v qemu-system-x86_64 >/dev/null || { echo "error: qemu-system-x86_64 is required" >&2; exit 1; }

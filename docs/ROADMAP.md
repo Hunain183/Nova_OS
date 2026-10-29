@@ -2,14 +2,15 @@
 
 - [x] Milestone 1 source: Limine entry, linker script, welcome message, ISO
   recipe.
-- [ ] Milestone 1 runtime verification in QEMU and VMware.
-- [ ] Milestone 2 terminal, keyboard driver, bounded shell parser.
-- [ ] Milestone 3 exception handlers and timer interrupts.
-- [ ] Milestone 4 physical-page allocator.
-- [ ] Milestone 5 cooperative tasks, then a scheduler.
-- [ ] Milestone 6 framebuffer graphics and a simple GUI.
-- [ ] Milestone 7 optional RAM-backed filesystem.
-- [ ] Milestone 8 integration test report and final documentation.
+- [x] Milestone 1 runtime verification in QEMU (automated); VMware remains a
+  manual compatibility target.
+- [x] Milestone 2 terminal, keyboard driver, bounded shell parser.
+- [x] Milestone 3 basic IRQ setup for keyboard input.
+- [ ] Milestone 4 physical-page allocator and kernel heap.
+- [ ] Milestone 5 user mode, processes, cooperative tasks, then a scheduler.
+- [ ] Milestone 6 persistent filesystem and file-backed shell commands.
+- [ ] Milestone 7 system calls, applications, and process isolation.
+- [ ] Milestone 8 networking, graphics, and optional desktop shell.
+- [ ] Milestone 9 integration test report and final documentation.
 
-The project will not advance to later subsystems until the first boot artifact
-is built and tested in at least one compatible virtual machine.
+Every milestone must pass `make verify` before it is considered complete.

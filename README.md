@@ -10,8 +10,8 @@ Milestone 1 provides:
 
 - A freestanding x86-64 C kernel linked as an ELF executable.
 - A Limine protocol base-revision request and HHDM request.
-- A direct kernel entry point that displays `Welcome to NovaOS` in VGA text
-	memory.
+- A direct kernel entry point with serial diagnostics, PIC/IDT keyboard
+	interrupts, and a bounded interactive shell.
 - A reproducible `build/NovaOS.iso` target using pinned Limine v12.9.6 assets.
 
 The ISO is meant to run directly on virtual hardware. It does not require a
@@ -48,7 +48,7 @@ To start a manual build:
 
 After a successful run, open the workflow run and download the
 `NovaOS-ISO` artifact. Extract `NovaOS.iso`, attach it as a CD/DVD image to an
-x86-64 VMware virtual machine, and boot the VM. For the current VGA-text
-milestone, configure the VM for legacy BIOS mode and verify that it displays
-`Welcome to NovaOS`. The workflow builds and packages the ISO; it does not
-claim VMware or QEMU runtime success.
+x86-64 VMware virtual machine, and boot the VM. For the current terminal milestone, boot the ISO in VMware and verify that it
+displays the NovaOS prompt. Type `help` to list the supported commands. The
+workflow builds and packages the ISO; it does not claim VMware or QEMU runtime
+success.

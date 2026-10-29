@@ -4,10 +4,11 @@
 
 The firmware loads Limine from the ISO. Limine reads `boot/limine.conf`, loads
 `boot/NovaOS.elf`, satisfies the requests embedded in the ELF, and transfers
-control to `kmain`. The kernel requests both HHDM and framebuffer responses. It
-renders a small bootstrap welcome message into a 32-bit RGB framebuffer when
-one is available, which supports UEFI VMware boots. BIOS boots without a
-framebuffer fall back to the HHDM-mapped VGA text buffer at `0xb8000`.
+control to `kmain`. The kernel requests both HHDM and framebuffer responses. It renders a small
+interactive terminal into a 32-bit RGB framebuffer when one is available,
+which supports UEFI VMware boots. BIOS boots without a framebuffer fall back
+to the HHDM-mapped VGA text buffer at `0xb8000`. The terminal accepts `help`,
+`clear`, `echo`, `info`, and `halt`.
 
 The kernel is linked at the fixed x86-64 higher-half base
 `0xffffffff80000000`, as required for non-relocatable Limine ELF images. Its
@@ -20,7 +21,9 @@ handlers will need the stack to remain safe across asynchronous entry.
 
 ## Module boundaries
 
-- `kernel/main.c`: first kernel entry and bootstrap display output.
+- `kernel/main.c`: kernel entry, terminal, serial output, PIC/IDT setup, and
+  PS/2 keyboard handling.
+- `kernel/interrupts.S`: keyboard IRQ entry stub.
 - `include/limine.h`: the Limine HHDM and framebuffer declarations currently
 	needed.
 - `linker.ld`: ELF entry point, load address, and retained request sections.

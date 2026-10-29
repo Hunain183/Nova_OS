@@ -2,6 +2,8 @@
 
 #include "limine.h"
 
+extern void keyboard_interrupt_stub(void);
+
 __attribute__((used, section(".limine_requests_start")))
 static volatile uint64_t limine_requests_start[] =
     LIMINE_REQUESTS_START_MARKER;
@@ -32,24 +34,129 @@ static void halt_forever(void) {
     }
 }
 
+static inline void outb(uint16_t port, uint8_t value) {
+    __asm__ volatile ("outb %0, %1" : : "a"(value), "Nd"(port));
+}
+
+static inline uint8_t inb(uint16_t port) {
+    uint8_t value;
+    __asm__ volatile ("inb %1, %0" : "=a"(value) : "Nd"(port));
+    return value;
+}
+
+static void keyboard_init(void) {
+    uint8_t status;
+    do {
+        status = inb(0x64);
+    } while ((status & 0x02) != 0);
+    outb(0x64, 0x20);
+    do {
+        status = inb(0x64);
+    } while ((status & 0x01) == 0);
+    uint8_t configuration = inb(0x60);
+    configuration |= 0x01;
+    configuration &= (uint8_t)~0x10;
+    do {
+        status = inb(0x64);
+    } while ((status & 0x02) != 0);
+    outb(0x64, 0x60);
+    do {
+        status = inb(0x64);
+    } while ((status & 0x02) != 0);
+    outb(0x60, configuration);
+    do {
+        status = inb(0x64);
+    } while ((status & 0x02) != 0);
+    outb(0x64, 0xae);
+}
+
+static void serial_write(const char *text) {
+    while (*text != '\0') {
+        uint32_t timeout = 100000;
+        while ((inb(0x3fd) & 0x20) == 0 && timeout != 0) {
+            timeout--;
+        }
+        if (timeout == 0) {
+            return;
+        }
+        outb(0x3f8, (uint8_t)*text++);
+    }
+}
+
+static void serial_init(void) {
+    outb(0x3f8 + 1, 0x00);
+    outb(0x3f8 + 3, 0x80);
+    outb(0x3f8 + 0, 0x03);
+    outb(0x3f8 + 1, 0x00);
+    outb(0x3f8 + 3, 0x03);
+    outb(0x3f8 + 2, 0xc7);
+    outb(0x3f8 + 4, 0x0b);
+    serial_write("NovaOS: serial online\r\n");
+}
+
+struct idt_entry {
+    uint16_t offset_low;
+    uint16_t selector;
+    uint8_t ist;
+    uint8_t attributes;
+    uint16_t offset_mid;
+    uint32_t offset_high;
+    uint32_t reserved;
+} __attribute__((packed));
+
+struct idt_pointer {
+    uint16_t limit;
+    uint64_t base;
+} __attribute__((packed));
+
+static struct idt_entry idt[256];
+
+static void idt_set_gate(uint8_t vector, uint16_t selector,
+                         void (*handler)(void)) {
+    uint64_t address = (uint64_t)handler;
+    idt[vector].offset_low = (uint16_t)address;
+    idt[vector].selector = selector;
+    idt[vector].ist = 0;
+    idt[vector].attributes = 0x8e;
+    idt[vector].offset_mid = (uint16_t)(address >> 16);
+    idt[vector].offset_high = (uint32_t)(address >> 32);
+    idt[vector].reserved = 0;
+}
+
+static void interrupts_init(void) {
+    for (uint16_t index = 0; index < 256; index++) {
+        idt[index] = (struct idt_entry){0};
+    }
+    uint16_t code_segment;
+    __asm__ volatile ("mov %%cs, %0" : "=r"(code_segment));
+    idt_set_gate(33, code_segment, keyboard_interrupt_stub);
+    struct idt_pointer pointer = {
+        .limit = sizeof(idt) - 1,
+        .base = (uint64_t)idt,
+    };
+    __asm__ volatile ("lidt %0" : : "m"(pointer));
+
+    outb(0x20, 0x11);
+    outb(0xa0, 0x11);
+    outb(0x21, 0x20);
+    outb(0xa1, 0x28);
+    outb(0x21, 0x04);
+    outb(0xa1, 0x02);
+    outb(0x21, 0x01);
+    outb(0xa1, 0x01);
+    outb(0x21, 0xfd);
+    outb(0xa1, 0xff);
+    outb(0x21, inb(0x21) & (uint8_t)~0x02);
+    keyboard_init();
+    __asm__ volatile ("sti");
+    serial_write("NovaOS: interrupts online\r\n");
+}
+
 static void clear_screen(volatile uint16_t *video_memory) {
     for (uint16_t row = 0; row < 25; row++) {
         for (uint16_t column = 0; column < 80; column++) {
             video_memory[(row * 80) + column] = (uint16_t)' ' | 0x0700;
         }
-    }
-}
-
-static void write_string(volatile uint16_t *video_memory,
-                         uint16_t row,
-                         uint16_t column,
-                         const char *text,
-                         uint8_t colour) {
-    while (*text != '\0' && column < 80) {
-        video_memory[(row * 80) + column] = (uint16_t)(uint8_t)*text | 
-                                             ((uint16_t)colour << 8);
-        text++;
-        column++;
     }
 }
 
@@ -154,7 +261,128 @@ static void framebuffer_clear(const struct limine_framebuffer *framebuffer,
     }
 }
 
+static volatile uint16_t *vga_memory;
+static const struct limine_framebuffer *terminal_framebuffer;
+static uint64_t terminal_x;
+static uint64_t terminal_y;
+static char command[80];
+static uint8_t command_length;
+
+static void terminal_putchar(char character) {
+    if (terminal_framebuffer != 0) {
+        if (character == '\n') {
+            terminal_x = 24;
+            terminal_y += 24;
+        } else if (character == '\b') {
+            if (terminal_x > 24) {
+                terminal_x -= 18;
+                framebuffer_write(terminal_framebuffer, " ", terminal_x, terminal_y);
+            }
+        } else {
+            char text[2] = {character, '\0'};
+            framebuffer_write(terminal_framebuffer, text, terminal_x, terminal_y);
+            terminal_x += 18;
+            if (terminal_x + 18 >= terminal_framebuffer->width) {
+                terminal_x = 24;
+                terminal_y += 24;
+            }
+        }
+        return;
+    }
+    if (character == '\n') {
+        terminal_x = 0;
+        terminal_y++;
+    } else if (character == '\b') {
+        if (terminal_x > 0) {
+            terminal_x--;
+            vga_memory[(terminal_y * 80) + terminal_x] = (uint16_t)' ' | 0x0700;
+        }
+    } else if (terminal_x < 80) {
+        vga_memory[(terminal_y * 80) + terminal_x] = (uint16_t)(uint8_t)character | 0x0700;
+        terminal_x++;
+    }
+}
+
+static void terminal_write(const char *text) {
+    while (*text != '\0') {
+        terminal_putchar(*text++);
+    }
+}
+
+static void terminal_prompt(void) {
+    terminal_write("\n> ");
+    command_length = 0;
+}
+
+static void terminal_command(void) {
+    command[command_length] = '\0';
+    serial_write("NovaOS command: ");
+    serial_write(command);
+    serial_write("\r\n");
+    if (command_length == 0) {
+        terminal_prompt();
+    } else if (command[0] == 'h' && command[1] == 'e' && command[2] == 'l' &&
+               command[3] == 'p' && command[4] == '\0') {
+        terminal_write("\ncommands: help, clear, echo, info, halt");
+        terminal_prompt();
+    } else if (command[0] == 'c' && command[1] == 'l' && command[2] == 'e' &&
+               command[3] == 'a' && command[4] == 'r' && command[5] == '\0') {
+        if (terminal_framebuffer != 0) {
+            framebuffer_clear(terminal_framebuffer, 0x102030);
+        } else {
+            clear_screen(vga_memory);
+        }
+        terminal_x = terminal_framebuffer != 0 ? 24 : 0;
+        terminal_y = 0;
+        terminal_prompt();
+    } else if (command[0] == 'e' && command[1] == 'c' && command[2] == 'h' &&
+               command[3] == 'o' && command[4] == ' ' && command_length > 5) {
+        terminal_write("\n");
+        terminal_write(&command[5]);
+        terminal_prompt();
+    } else if (command[0] == 'i' && command[1] == 'n' && command[2] == 'f' &&
+               command[3] == 'o' && command[4] == '\0') {
+        terminal_write("\nNovaOS x86-64 | interrupts: on | keyboard: PS/2");
+        terminal_prompt();
+    } else if (command[0] == 'h' && command[1] == 'a' && command[2] == 'l' &&
+               command[3] == 't' && command[4] == '\0') {
+        terminal_write("\nhalted");
+        halt_forever();
+    } else {
+        terminal_write("\nunknown command");
+        terminal_prompt();
+    }
+}
+
+static const char keyboard_map[] =
+    "\0\0" "1234567890-=" "\b\t" "qwertyuiop[]" "\n\0" "asdfghjkl;'`"
+    "\0\\zxcvbnm,./\0*\0 \0";
+
+void keyboard_interrupt_handler(void) {
+    uint8_t scancode = inb(0x60);
+    outb(0x20, 0x20);
+    if ((scancode & 0x80) != 0 || scancode >= sizeof(keyboard_map) - 1) {
+        return;
+    }
+    char character = keyboard_map[scancode];
+    if (character == '\0') {
+        return;
+    }
+    if (character == '\n') {
+        terminal_command();
+    } else if (character == '\b') {
+        if (command_length > 0) {
+            command_length--;
+            terminal_putchar('\b');
+        }
+    } else if (command_length < sizeof(command) - 1) {
+        command[command_length++] = character;
+        terminal_putchar(character);
+    }
+}
+
 void kmain(void) {
+    serial_init();
     if (limine_framebuffer_request.response != 0 &&
         limine_framebuffer_request.response->framebuffer_count != 0) {
         struct limine_framebuffer *framebuffer =
@@ -162,9 +390,12 @@ void kmain(void) {
         if (framebuffer->memory_model == LIMINE_FRAMEBUFFER_RGB &&
             framebuffer->bpp == 32 && framebuffer->width >= 330 &&
             framebuffer->height >= 60) {
+            terminal_framebuffer = framebuffer;
             framebuffer_clear(framebuffer, 0x102030);
-            framebuffer_write(framebuffer, "WELCOME TO NOVAOS", 24, 24);
-            framebuffer_write(framebuffer, "LIMINE X86-64 BOOT", 24, 54);
+            terminal_write("WELCOME TO NOVAOS\n");
+            terminal_write("LIMINE X86-64 BOOT");
+            terminal_prompt();
+            interrupts_init();
             halt_forever();
         }
     }
@@ -173,11 +404,13 @@ void kmain(void) {
         halt_forever();
     }
 
-    volatile uint16_t *video_memory =
+    vga_memory =
         (volatile uint16_t *)(limine_hhdm_request.response->offset + 0xb8000);
 
-    clear_screen(video_memory);
-    write_string(video_memory, 8, 27, "Welcome to NovaOS", 0x0f);
-    write_string(video_memory, 10, 21, "Limine x86-64 boot milestone 1", 0x07);
+    clear_screen(vga_memory);
+    terminal_write("Welcome to NovaOS\n");
+    terminal_write("Limine x86-64 interactive shell");
+    terminal_prompt();
+    interrupts_init();
     halt_forever();
 }

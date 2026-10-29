@@ -31,3 +31,19 @@ artifact is `build/NovaOS.iso`.
 `make debug` starts QEMU paused with a GDB server on TCP port 1234. QEMU is not
 silently substituted for VMware; `make run` is only an additional emulator
 check.
+
+The kernel shell accepts `help`, `clear`, `echo <text>`, `info`, and `halt`.
+Serial diagnostics use COM1 when available but do not prevent boot when no
+virtual serial device is configured.
+
+Run the complete local gate with:
+
+```sh
+make verify
+```
+
+This rebuilds the kernel and ISO, boots the ISO in headless QEMU, and sends the
+boot and interrupt initialization checks through the serial log. It requires
+`xorriso` and `qemu-system-x86_64`; the same gate runs in GitHub Actions.
+Interactive keyboard commands should be tested in VMware until a deterministic
+automated input backend is added.

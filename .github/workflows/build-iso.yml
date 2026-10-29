@@ -29,6 +29,7 @@ jobs:
             clang \
             curl \
             file \
+            qemu-system-x86 \
             xorriso
 
       - name: Show toolchain versions
@@ -57,6 +58,9 @@ jobs:
           file build/NovaOS.iso
           sha256sum build/NovaOS.iso | tee build/logs/NovaOS.iso.sha256
           xorriso -indev build/NovaOS.iso -toc 2>&1 | tee build/logs/iso-toc.log
+
+      - name: Boot and exercise NovaOS
+        run: ./scripts/verify.sh
 
       - name: Upload NovaOS ISO
         if: success()
