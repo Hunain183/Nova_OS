@@ -104,7 +104,7 @@ static void framebuffer_write_glyph(
     const uint8_t *glyph = glyph_for(character);
     for (uint64_t row = 0; row < 7; row++) {
         for (uint64_t column = 0; column < 5; column++) {
-            if ((glyph[row] & (1u << column)) == 0) {
+            if ((glyph[row] & (1u << (4 - column))) == 0) {
                 continue;
             }
             framebuffer_fill(framebuffer, x + column * 3, y + row * 3, 3, 3,

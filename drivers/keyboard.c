@@ -61,10 +61,10 @@ int keyboard_initialize(void) {
 
 static char keyboard_character(uint8_t scancode) {
     static const char normal[] =
-        "??1234567890-=\b\tqwertyuiop[]\n??asdfghjkl;'`?\\zxcvbnm,./?? ";
+        "??1234567890-=\b\tqwertyuiop[]\n?asdfghjkl;'`?\\zxcvbnm,./?? ";
     static const char shifted[] =
         "\077\077!@#$%^&*()_+\b\tQWERTYUIOP{}\n"
-        "\077\077ASDFGHJKL:\"~?|ZXCVBNM<>\077\077\077 ";
+        "\077ASDFGHJKL:\"~?|ZXCVBNM<>\077\077\077 ";
     if (scancode >= sizeof(normal) - 1) {
         return '\0';
     }
