@@ -32,7 +32,9 @@ artifact is `build/NovaOS.iso`.
 silently substituted for VMware; `make run` is only an additional emulator
 check.
 
-The kernel shell accepts `help`, `clear`, `echo <text>`, `info`, and `halt`.
+The kernel shell prompt is `NovaOS>`. It accepts `help`, `clear`, `about`,
+`version`, `echo <text>`, `reboot`, and `shutdown`. Use the keyboard letters,
+number row, space, Enter, Backspace, and Shift keys.
 Serial diagnostics use COM1 when available but do not prevent boot when no
 virtual serial device is configured.
 
@@ -45,5 +47,6 @@ make verify
 This rebuilds the kernel and ISO, boots the ISO in headless QEMU, and sends the
 boot and interrupt initialization checks through the serial log. It requires
 `xorriso` and `qemu-system-x86_64`; the same gate runs in GitHub Actions.
-Interactive keyboard commands should be tested in VMware until a deterministic
-automated input backend is added.
+To test interactively in VMware, attach `build/NovaOS.iso` as the VM's CD/DVD,
+boot it, and type `help`, `about`, `version`, `echo hello`, `clear`, and
+`shutdown`. Test `reboot` last because it intentionally restarts the VM.

@@ -1,17 +1,20 @@
 # NovaOS
 
 NovaOS is an educational x86-64 operating system built as a freestanding
-kernel and booted by Limine. The project is intentionally being developed in
-small milestones; the current checkpoint is the first bootable kernel.
+kernel and booted by Limine. The project is intentionally being developed in small milestones; the current
+checkpoint is the second milestone with a bootable terminal shell.
 
 ## Current checkpoint
 
-Milestone 1 provides:
+Milestone 2 provides:
 
 - A freestanding x86-64 C kernel linked as an ELF executable.
 - A Limine protocol base-revision request and HHDM request.
-- A direct kernel entry point with serial diagnostics, PIC/IDT keyboard
-	interrupts, and a bounded interactive shell.
+- A framebuffer terminal with VGA fallback, scrolling, and screen clearing.
+- A PIC/IDT PS/2 keyboard driver with Enter, Backspace, Space, and Shift
+  support.
+- An interactive shell with `help`, `clear`, `about`, `version`, `echo`,
+  `reboot`, and `shutdown` commands.
 - A reproducible `build/NovaOS.iso` target using pinned Limine v12.9.6 assets.
 
 The ISO is meant to run directly on virtual hardware. It does not require a
@@ -27,9 +30,8 @@ make iso
 make run
 ```
 
-The current container lacks `xorriso` and QEMU, so ISO creation and runtime
-testing must be performed after those tools are installed. `make kernel` is the
-tool-independent compile and link check.
+`make kernel` is the tool-independent compile and link check. `make verify`
+also builds the ISO and checks boot initialization in headless QEMU.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the boot design and
 [docs/ROADMAP.md](docs/ROADMAP.md) for milestone status.
@@ -48,7 +50,7 @@ To start a manual build:
 
 After a successful run, open the workflow run and download the
 `NovaOS-ISO` artifact. Extract `NovaOS.iso`, attach it as a CD/DVD image to an
-x86-64 VMware virtual machine, and boot the VM. For the current terminal milestone, boot the ISO in VMware and verify that it
-displays the NovaOS prompt. Type `help` to list the supported commands. The
-workflow builds and packages the ISO; it does not claim VMware or QEMU runtime
-success.
+x86-64 VMware virtual machine, and boot the VM. Verify that it displays
+`NovaOS>`, then type `help` to list the supported commands. The workflow builds
+and packages the ISO; local `make verify` additionally checks boot
+initialization in QEMU but does not exercise interactive VMware input.
