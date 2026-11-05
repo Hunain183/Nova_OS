@@ -44,30 +44,48 @@ static inline uint8_t inb(uint16_t port) {
     return value;
 }
 
-static void keyboard_init(void) {
-    uint8_t status;
-    do {
-        status = inb(0x64);
-    } while ((status & 0x02) != 0);
+static int keyboard_wait_input_clear(void) {
+    for (uint32_t timeout = 100000; timeout != 0; timeout--) {
+        if ((inb(0x64) & 0x02) == 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static int keyboard_wait_output_ready(void) {
+    for (uint32_t timeout = 100000; timeout != 0; timeout--) {
+        if ((inb(0x64) & 0x01) != 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static int keyboard_init(void) {
+    if (!keyboard_wait_input_clear()) {
+        return 0;
+    }
     outb(0x64, 0x20);
-    do {
-        status = inb(0x64);
-    } while ((status & 0x01) == 0);
+    if (!keyboard_wait_output_ready()) {
+        return 0;
+    }
     uint8_t configuration = inb(0x60);
     configuration |= 0x01;
     configuration &= (uint8_t)~0x10;
-    do {
-        status = inb(0x64);
-    } while ((status & 0x02) != 0);
+    if (!keyboard_wait_input_clear()) {
+        return 0;
+    }
     outb(0x64, 0x60);
-    do {
-        status = inb(0x64);
-    } while ((status & 0x02) != 0);
+    if (!keyboard_wait_input_clear()) {
+        return 0;
+    }
     outb(0x60, configuration);
-    do {
-        status = inb(0x64);
-    } while ((status & 0x02) != 0);
+    if (!keyboard_wait_input_clear()) {
+        return 0;
+    }
     outb(0x64, 0xae);
+    return 1;
 }
 
 static void serial_write(const char *text) {
@@ -144,11 +162,12 @@ static void interrupts_init(void) {
     outb(0xa1, 0x02);
     outb(0x21, 0x01);
     outb(0xa1, 0x01);
-    outb(0x21, 0xfd);
+    outb(0x21, 0xff);
     outb(0xa1, 0xff);
-    outb(0x21, inb(0x21) & (uint8_t)~0x02);
-    keyboard_init();
-    __asm__ volatile ("sti");
+    if (keyboard_init()) {
+        outb(0x21, inb(0x21) & (uint8_t)~0x02);
+        __asm__ volatile ("sti");
+    }
     serial_write("NovaOS: interrupts online\r\n");
 }
 
