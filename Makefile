@@ -30,7 +30,7 @@ kernel: $(KERNEL)
 $(BUILD_DIR):
 	mkdir -p $@
 
-$(BUILD_DIR)/main.o: kernel/main.c include/limine.h include/keyboard.h \
+$(BUILD_DIR)/main.o: kernel/main.c include/limine.h include/interrupts.h \
 		include/shell.h include/terminal.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
@@ -40,18 +40,31 @@ $(BUILD_DIR)/terminal.o: kernel/terminal.c include/limine.h include/terminal.h |
 $(BUILD_DIR)/keyboard.o: drivers/keyboard.c include/keyboard.h include/shell.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(BUILD_DIR)/shell.o: shell/shell.c include/shell.h include/terminal.h | $(BUILD_DIR)
+$(BUILD_DIR)/pic.o: drivers/pic.c include/pic.h | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/timer.o: drivers/timer.c include/timer.h | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/shell.o: shell/shell.c include/interrupts.h include/shell.h \
+		include/terminal.h include/timer.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/interrupts.o: kernel/interrupts.S include/keyboard.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
+$(BUILD_DIR)/interrupts-c.o: kernel/interrupts.c include/interrupts.h \
+		include/keyboard.h include/pic.h include/terminal.h include/timer.h | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
 $(KERNEL): $(BUILD_DIR)/main.o $(BUILD_DIR)/terminal.o \
 		$(BUILD_DIR)/keyboard.o $(BUILD_DIR)/shell.o \
-		$(BUILD_DIR)/interrupts.o linker.ld
+		$(BUILD_DIR)/pic.o $(BUILD_DIR)/timer.o \
+		$(BUILD_DIR)/interrupts.o $(BUILD_DIR)/interrupts-c.o linker.ld
 	$(LD) $(LDFLAGS) -o $@ $(BUILD_DIR)/main.o \
 		$(BUILD_DIR)/terminal.o $(BUILD_DIR)/keyboard.o \
-		$(BUILD_DIR)/shell.o $(BUILD_DIR)/interrupts.o
+		$(BUILD_DIR)/shell.o $(BUILD_DIR)/pic.o $(BUILD_DIR)/timer.o \
+		$(BUILD_DIR)/interrupts.o $(BUILD_DIR)/interrupts-c.o
 
 $(LIMINE_DIR)/limine.c: $(LIMINE_ARCHIVE)
 	tar -xzf $< -C $(BUILD_DIR)

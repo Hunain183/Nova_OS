@@ -6,15 +6,19 @@ checkpoint is the second milestone with a bootable terminal shell.
 
 ## Current checkpoint
 
-Milestone 2 provides:
+Milestone 3 provides:
 
 - A freestanding x86-64 C kernel linked as an ELF executable.
 - A Limine protocol base-revision request and HHDM request.
 - A framebuffer terminal with VGA fallback, scrolling, and screen clearing.
-- A PIC/IDT PS/2 keyboard driver with Enter, Backspace, Space, and Shift
-  support.
+- A remapped 8259 PIC with normalized CPU exception and hardware IRQ stubs.
+- CPU exception reporting for the exception name, vector, error code, and RIP;
+  unrecoverable exceptions halt the kernel.
+- A PIT system timer at 100 Hz with `ticks` and `uptime` shell commands.
+- A PS/2 keyboard driver with Enter, Backspace, Space, and Shift support.
 - An interactive shell with `help`, `clear`, `about`, `version`, `echo`,
-  `reboot`, and `shutdown` commands.
+  `reboot`, `shutdown`, `ticks`, `uptime`, `exceptions`, `inttest`, and
+  `exception-test` commands.
 - A reproducible `build/NovaOS.iso` target using pinned Limine v12.9.6 assets.
 
 The ISO is meant to run directly on virtual hardware. It does not require a
@@ -33,7 +37,7 @@ make run
 `make kernel` is the tool-independent compile and link check. `make verify`
 also builds the ISO and checks boot initialization in headless QEMU.
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the boot design and
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the boot and interrupt design and
 [docs/ROADMAP.md](docs/ROADMAP.md) for milestone status.
 
 ## GitHub Actions ISO build

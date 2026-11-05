@@ -1,7 +1,9 @@
 #include <stdint.h>
 
+#include "interrupts.h"
 #include "shell.h"
 #include "terminal.h"
+#include "timer.h"
 
 #define SHELL_INPUT_CAPACITY 128
 #define NOVAOS_VERSION "0.2.0"
@@ -24,6 +26,22 @@ static int starts_with(const char *text, const char *prefix) {
         }
     }
     return 1;
+}
+
+static void write_decimal(uint64_t value) {
+    char digits[20];
+    uint8_t length = 0;
+    if (value == 0) {
+        terminal_putchar('0');
+        return;
+    }
+    while (value != 0) {
+        digits[length++] = (char)('0' + value % 10);
+        value /= 10;
+    }
+    while (length != 0) {
+        terminal_putchar(digits[--length]);
+    }
 }
 
 static void prompt(void) {
@@ -57,7 +75,7 @@ static void execute_command(void) {
     if (input_length == 0) {
         prompt();
     } else if (text_equals(input, "help")) {
-        terminal_write("help clear about version echo reboot shutdown\n");
+        terminal_write("help clear about version echo reboot shutdown ticks uptime exceptions inttest exception-test\n");
         prompt();
     } else if (text_equals(input, "clear")) {
         terminal_clear();
@@ -70,6 +88,33 @@ static void execute_command(void) {
         terminal_write(NOVAOS_VERSION);
         terminal_write("\n");
         prompt();
+    } else if (text_equals(input, "ticks")) {
+        terminal_write("Timer ticks: ");
+        write_decimal(timer_ticks());
+        terminal_write("\n");
+        prompt();
+    } else if (text_equals(input, "uptime")) {
+        terminal_write("Uptime seconds: ");
+        write_decimal(timer_uptime_seconds());
+        terminal_write("\n");
+        prompt();
+    } else if (text_equals(input, "exceptions")) {
+        terminal_write("Supported CPU exceptions:\n");
+        for (uint64_t number = 0; number <= 20; number++) {
+            write_decimal(number);
+            terminal_write(" ");
+            terminal_write(interrupt_exception_name(number));
+            terminal_write("\n");
+        }
+        prompt();
+    } else if (text_equals(input, "inttest")) {
+        terminal_write("Interrupt system operational. Timer ticks: ");
+        write_decimal(timer_ticks());
+        terminal_write("\n");
+        prompt();
+    } else if (text_equals(input, "exception-test")) {
+        terminal_write("DESTRUCTIVE TEST: triggering divide error; system will halt.\n");
+        interrupt_test_divide_error();
     } else if (starts_with(input, "echo") &&
                (input[4] == '\0' || input[4] == ' ')) {
         if (input[4] == ' ' && input[5] != '\0') {

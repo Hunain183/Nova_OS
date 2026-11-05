@@ -1,5 +1,6 @@
 #include <stdint.h>
 
+#include "interrupts.h"
 #include "keyboard.h"
 #include "limine.h"
 #include "shell.h"
@@ -67,70 +68,6 @@ static void serial_init(void) {
     outb(0x3fa, 0xc7);
     outb(0x3fc, 0x0b);
     serial_write("NovaOS: serial online\r\n");
-}
-
-struct idt_entry {
-    uint16_t offset_low;
-    uint16_t selector;
-    uint8_t ist;
-    uint8_t attributes;
-    uint16_t offset_mid;
-    uint32_t offset_high;
-    uint32_t reserved;
-} __attribute__((packed));
-
-struct idt_pointer {
-    uint16_t limit;
-    uint64_t base;
-} __attribute__((packed));
-
-static struct idt_entry idt[256];
-
-extern void keyboard_interrupt_stub(void);
-
-static void idt_set_gate(uint8_t vector, uint16_t selector,
-                         void (*handler)(void)) {
-    uint64_t address = (uint64_t)handler;
-    idt[vector].offset_low = (uint16_t)address;
-    idt[vector].selector = selector;
-    idt[vector].ist = 0;
-    idt[vector].attributes = 0x8e;
-    idt[vector].offset_mid = (uint16_t)(address >> 16);
-    idt[vector].offset_high = (uint32_t)(address >> 32);
-    idt[vector].reserved = 0;
-}
-
-static int interrupts_init(void) {
-    for (uint16_t index = 0; index < 256; index++) {
-        idt[index] = (struct idt_entry){0};
-    }
-    uint16_t code_segment;
-    __asm__ volatile ("mov %%cs, %0" : "=r"(code_segment));
-    idt_set_gate(33, code_segment, keyboard_interrupt_stub);
-    struct idt_pointer pointer = {
-        .limit = sizeof(idt) - 1,
-        .base = (uint64_t)idt,
-    };
-    __asm__ volatile ("lidt %0" : : "m"(pointer));
-
-    outb(0x20, 0x11);
-    outb(0xa0, 0x11);
-    outb(0x21, 0x20);
-    outb(0xa1, 0x28);
-    outb(0x21, 0x04);
-    outb(0xa1, 0x02);
-    outb(0x21, 0x01);
-    outb(0xa1, 0x01);
-    outb(0x21, 0xff);
-    outb(0xa1, 0xff);
-
-    if (!keyboard_initialize()) {
-        serial_write("NovaOS: keyboard unavailable\r\n");
-        return 0;
-    }
-    outb(0x21, inb(0x21) & (uint8_t)~0x02);
-    __asm__ volatile ("sti");
-    return 1;
 }
 
 void kmain(void) {
