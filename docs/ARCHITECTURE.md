@@ -1,6 +1,6 @@
 # NovaOS Architecture
 
-## Milestone 3 boot and interrupt path
+## Milestones 3-5 boot, memory, and scheduling path
 
 The firmware loads Limine from the ISO. Limine reads `boot/limine.conf`, loads
 `boot/NovaOS.elf`, satisfies the requests embedded in the ELF, and transfers
@@ -24,6 +24,20 @@ to the PIT timer and IRQ1 to the keyboard, then sends the appropriate PIC EOI.
 tick counter. Exception handlers print the vector, name, error code, and RIP,
 then halt because continuing after an unrecoverable CPU exception is unsafe.
 
+The Limine memory-map response is initialized before the terminal or interrupts.
+`mm/pmm.c` uses a 4 KiB bitmap: all pages begin reserved, only
+`LIMINE_MEMMAP_USABLE` ranges are released, and the bitmap's own pages are
+reserved again. Bootloader, executable/module, framebuffer, ACPI, and other
+non-usable regions therefore cannot be allocated. The bitmap is accessed
+through the Limine HHDM; no new paging or virtual-memory manager is introduced.
+
+`sched/scheduler.c` implements cooperative round-robin scheduling. Each task
+gets one PMM-allocated page through the HHDM and starts from a synthetic,
+ABI-aligned context frame. `kernel/context.S` switches the callee-saved
+registers and stack pointer. The timer remains an accounting device only;
+tasks call `scheduler_yield`, so this milestone does not claim preemptive
+scheduling or timer-driven task switches.
+
 The kernel is linked at the fixed x86-64 higher-half base
 `0xffffffff80000000`, as required for non-relocatable Limine ELF images. Its
 loadable segments use page alignment and separate executable/read-only
@@ -42,12 +56,17 @@ handlers will need the stack to remain safe across asynchronous entry.
 - `kernel/interrupts.S`: exception and hardware IRQ entry stubs.
 - `drivers/pic.c`: legacy 8259 PIC remapping, masking, and EOI signaling.
 - `drivers/timer.c`: PIT setup and system tick accounting.
+- `mm/pmm.c`: Limine memory-map validation and bitmap physical page allocator.
+- `sched/scheduler.c`: task control blocks, cooperative round-robin scheduling,
+  PMM-backed stacks, and demonstration tasks.
+- `kernel/context.S`: callee-saved register and stack context switching.
 - `drivers/keyboard.c`: bounded PS/2 setup, explicit set-1 scancode
   translation, and keyboard input dispatch.
 - `shell/shell.c`: fixed-size command input and shell command execution.
 - `include/limine.h`, `include/interrupts.h`, `include/pic.h`,
-  `include/timer.h`, `include/terminal.h`, `include/keyboard.h`, and
-  `include/shell.h`: protocol and module interfaces.
+  `include/timer.h`, `include/pmm.h`, `include/scheduler.h`,
+  `include/terminal.h`, `include/keyboard.h`, and `include/shell.h`: protocol
+  and module interfaces.
 - `linker.ld`: ELF entry point, load address, and retained request sections.
 - `Makefile`: freestanding compilation, Limine asset retrieval, and ISO layout.
 

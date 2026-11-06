@@ -1,12 +1,13 @@
 # NovaOS
 
 NovaOS is an educational x86-64 operating system built as a freestanding
-kernel and booted by Limine. The project is intentionally being developed in small milestones; the current
-checkpoint is the second milestone with a bootable terminal shell.
+kernel and booted by Limine. The project is intentionally being developed in
+small milestones; the current checkpoint includes physical memory management
+and cooperative multitasking.
 
 ## Current checkpoint
 
-Milestone 3 provides:
+Milestones 3 through 5 provide:
 
 - A freestanding x86-64 C kernel linked as an ELF executable.
 - A Limine protocol base-revision request and HHDM request.
@@ -16,9 +17,14 @@ Milestone 3 provides:
   unrecoverable exceptions halt the kernel.
 - A PIT system timer at 100 Hz with `ticks` and `uptime` shell commands.
 - A PS/2 keyboard driver with Enter, Backspace, Space, and Shift support.
+- A Limine memory-map based bitmap physical page allocator with reserved-page
+  protection and allocation statistics.
+- PMM-backed cooperative round-robin tasks with isolated one-page stacks,
+  context switching, task states, and a three-task demonstration.
 - An interactive shell with `help`, `clear`, `about`, `version`, `echo`,
-  `reboot`, `shutdown`, `ticks`, `uptime`, `exceptions`, `inttest`, and
-  `exception-test` commands.
+  `reboot`, `shutdown`, `ticks`, `uptime`, `meminfo`, `memmap`, `alloc`,
+  `free`, `ps`, `tasktest`, `scheduler`, `kill`, `exceptions`, `inttest`,
+  and `exception-test` commands.
 - A reproducible `build/NovaOS.iso` target using pinned Limine v12.9.6 assets.
 
 The ISO is meant to run directly on virtual hardware. It does not require a

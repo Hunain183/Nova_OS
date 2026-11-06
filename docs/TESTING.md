@@ -2,12 +2,13 @@
 
 ## Current results
 
-The Milestone 3 kernel builds with Clang, GNU ld, and GNU Make without
-warnings. `make verify` builds the Limine ISO and boots it in headless QEMU;
-the serial log confirms serial setup and interrupt initialization. Interactive
-keyboard, timer commands, and deliberate exception testing require a VM test.
+The Milestone 5 kernel builds with Clang, GNU ld, and GNU Make without
+warnings. The PMM host harness verifies aligned allocation, accounting,
+free/reallocation, invalid frees, and double-free rejection. ISO and VM tests
+remain required for Limine memory-map delivery, task stacks, and terminal
+interaction.
 
-## Milestone 3 procedure
+## Milestones 4 and 5 procedure
 
 After installing the dependencies in [BUILDING.md](BUILDING.md):
 
@@ -19,9 +20,15 @@ After installing the dependencies in [BUILDING.md](BUILDING.md):
 	`echo This is a test`; verify spaces, Enter, and Backspace.
 6. Run `ticks` twice and confirm the values increase; run `uptime` after a
 	delay and confirm seconds increase.
-7. Run `exceptions` and `inttest` and confirm they return to the prompt.
-8. Test `reboot` next because it intentionally restarts the VM.
-9. Boot again and run `exception-test` last; confirm the exception report
+7. Run `meminfo` and `memmap`; confirm reserved regions are listed and total,
+	used, and free values are sensible.
+8. Run `alloc`, then `meminfo`, then `free`; confirm free memory decreases and
+	returns.
+9. Run `tasktest`; confirm task one, two, and three output interleaves and the
+	command returns. Run `ps` and `scheduler` afterward.
+10. Run `exceptions` and `inttest` and confirm they return to the prompt.
+11. Test `reboot` next because it intentionally restarts the VM.
+12. Boot again and run `exception-test` last; confirm the exception report
 	shows Divide Error, vector 0, an error code, an instruction pointer, and a
 	halted kernel.
 

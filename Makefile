@@ -31,7 +31,7 @@ $(BUILD_DIR):
 	mkdir -p $@
 
 $(BUILD_DIR)/main.o: kernel/main.c include/limine.h include/interrupts.h \
-		include/shell.h include/terminal.h | $(BUILD_DIR)
+		include/pmm.h include/scheduler.h include/shell.h include/terminal.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/terminal.o: kernel/terminal.c include/limine.h include/terminal.h | $(BUILD_DIR)
@@ -46,11 +46,22 @@ $(BUILD_DIR)/pic.o: drivers/pic.c include/pic.h | $(BUILD_DIR)
 $(BUILD_DIR)/timer.o: drivers/timer.c include/timer.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(BUILD_DIR)/shell.o: shell/shell.c include/interrupts.h include/shell.h \
-		include/terminal.h include/timer.h | $(BUILD_DIR)
+$(BUILD_DIR)/pmm.o: mm/pmm.c include/limine.h include/pmm.h | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/scheduler.o: sched/scheduler.c include/pmm.h include/scheduler.h \
+		include/terminal.h | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/shell.o: shell/shell.c include/interrupts.h include/limine.h \
+		include/pmm.h include/scheduler.h include/shell.h include/terminal.h \
+		include/timer.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/interrupts.o: kernel/interrupts.S include/keyboard.h | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/context.o: kernel/context.S | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/interrupts-c.o: kernel/interrupts.c include/interrupts.h \
@@ -59,12 +70,15 @@ $(BUILD_DIR)/interrupts-c.o: kernel/interrupts.c include/interrupts.h \
 
 $(KERNEL): $(BUILD_DIR)/main.o $(BUILD_DIR)/terminal.o \
 		$(BUILD_DIR)/keyboard.o $(BUILD_DIR)/shell.o \
-		$(BUILD_DIR)/pic.o $(BUILD_DIR)/timer.o \
-		$(BUILD_DIR)/interrupts.o $(BUILD_DIR)/interrupts-c.o linker.ld
+		$(BUILD_DIR)/pic.o $(BUILD_DIR)/timer.o $(BUILD_DIR)/pmm.o \
+		$(BUILD_DIR)/scheduler.o $(BUILD_DIR)/interrupts.o \
+		$(BUILD_DIR)/interrupts-c.o $(BUILD_DIR)/context.o linker.ld
 	$(LD) $(LDFLAGS) -o $@ $(BUILD_DIR)/main.o \
 		$(BUILD_DIR)/terminal.o $(BUILD_DIR)/keyboard.o \
 		$(BUILD_DIR)/shell.o $(BUILD_DIR)/pic.o $(BUILD_DIR)/timer.o \
-		$(BUILD_DIR)/interrupts.o $(BUILD_DIR)/interrupts-c.o
+		$(BUILD_DIR)/pmm.o \
+		$(BUILD_DIR)/scheduler.o $(BUILD_DIR)/interrupts.o \
+		$(BUILD_DIR)/interrupts-c.o $(BUILD_DIR)/context.o
 
 $(LIMINE_DIR)/limine.c: $(LIMINE_ARCHIVE)
 	tar -xzf $< -C $(BUILD_DIR)

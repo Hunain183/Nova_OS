@@ -34,6 +34,7 @@ check.
 
 The kernel shell prompt is `NovaOS>`. It accepts `help`, `clear`, `about`,
 `version`, `echo <text>`, `reboot`, `shutdown`, `ticks`, `uptime`,
+`meminfo`, `memmap`, `alloc`, `free`, `ps`, `tasktest`, `scheduler`, `kill`,
 `exceptions`, and `inttest`. `exception-test` is a destructive test: it
 deliberately triggers divide error and halts the kernel, so run it last.
 Use the keyboard letters, number row, space, Enter, Backspace, and Shift keys.
@@ -53,5 +54,7 @@ To test interactively in VMware, attach `build/NovaOS.iso` as the VM's CD/DVD,
 boot it, and type `help`, `about`, `version`, `echo Hello NovaOS`,
 `echo This is a test`, `ticks`, `uptime`, `exceptions`, and `inttest`.
 Confirm that the tick count increases, uptime eventually increases, spaces are
-preserved, and Backspace still works. Test `reboot` next and
-`exception-test` last because they intentionally restart or halt the VM.
+preserved, and Backspace still works. Then test `meminfo`, `memmap`, `alloc`,
+`free`, `tasktest`, `ps`, `scheduler`, and `kill` with an eligible task ID.
+Test `reboot` next and `exception-test` last because they intentionally restart
+or halt the VM.

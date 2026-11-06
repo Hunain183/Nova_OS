@@ -3,7 +3,9 @@
 #include "interrupts.h"
 #include "keyboard.h"
 #include "limine.h"
+#include "pmm.h"
 #include "shell.h"
+#include "scheduler.h"
 #include "terminal.h"
 
 __attribute__((used, section(".limine_requests_start")))
@@ -23,6 +25,13 @@ static volatile struct limine_hhdm_request limine_hhdm_request = {
 __attribute__((used, section(".limine_requests")))
 static volatile struct limine_framebuffer_request limine_framebuffer_request = {
     .id = LIMINE_FRAMEBUFFER_REQUEST_ID,
+    .revision = 0,
+    .response = 0,
+};
+
+__attribute__((used, section(".limine_requests")))
+static volatile struct limine_memmap_request limine_memmap_request = {
+    .id = LIMINE_MEMMAP_REQUEST_ID,
     .revision = 0,
     .response = 0,
 };
@@ -75,6 +84,17 @@ void kmain(void) {
 
     volatile uint16_t *vga_memory = 0;
     struct limine_framebuffer *framebuffer = 0;
+    if (limine_hhdm_request.response == 0 ||
+        limine_memmap_request.response == 0 ||
+        !pmm_init(limine_memmap_request.response,
+                  limine_hhdm_request.response->offset)) {
+        serial_write("NovaOS: physical memory initialization failed\r\n");
+        halt_forever();
+    }
+    if (!scheduler_initialize(limine_hhdm_request.response->offset)) {
+        serial_write("NovaOS: scheduler initialization failed\r\n");
+        halt_forever();
+    }
     if (limine_framebuffer_request.response != 0 &&
         limine_framebuffer_request.response->framebuffer_count != 0) {
         struct limine_framebuffer *candidate =
