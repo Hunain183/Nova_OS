@@ -116,7 +116,7 @@ static int create_task(task_entry entry) {
         task->stack_physical[SCHEDULER_STACK_PAGES - 1]) + PMM_PAGE_SIZE;
     stack_top &= ~0xfULL;
     stack_top -= 8 * sizeof(uint64_t);
-    uint64_t *stack = (uint64_t *)stack_top;
+    volatile uint64_t *stack = (volatile uint64_t *)stack_top;
     for (uint64_t index = 0; index < 6; index++) {
         stack[index] = 0;
     }
