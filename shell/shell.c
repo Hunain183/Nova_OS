@@ -95,10 +95,15 @@ static void execute_command(void) {
     if (input_length == 0) {
         prompt();
     } else if (text_equals(input, "help")) {
-        terminal_write("help clear about version echo reboot shutdown ticks uptime meminfo memmap alloc free ps tasktest scheduler kill exceptions inttest exception-test\n");
+        terminal_write("help clear about version echo reboot shutdown logo ticks uptime meminfo memmap alloc free ps tasktest scheduler kill exceptions inttest exception-test\n");
         prompt();
     } else if (text_equals(input, "clear")) {
         terminal_clear();
+        terminal_draw_logo();
+        prompt();
+    } else if (text_equals(input, "logo")) {
+        terminal_draw_logo();
+        terminal_write("NovaOS logo redrawn.\n");
         prompt();
     } else if (text_equals(input, "about")) {
         terminal_write("NovaOS is an educational x86-64 operating system.\n");

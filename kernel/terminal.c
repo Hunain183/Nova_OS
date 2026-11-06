@@ -193,6 +193,22 @@ void terminal_clear(void) {
     terminal_y = 0;
 }
 
+void terminal_draw_logo(void) {
+    if (terminal_framebuffer == 0 || terminal_framebuffer->width < 96 ||
+        terminal_framebuffer->height < 64) {
+        return;
+    }
+    uint64_t x = terminal_framebuffer->width - 96;
+    uint64_t y = 8;
+    framebuffer_fill(terminal_framebuffer, x, y, 80, 48, 0x203848);
+    framebuffer_fill(terminal_framebuffer, x + 8, y + 8, 16, 32, 0x44c2d8);
+    framebuffer_fill(terminal_framebuffer, x + 28, y + 8, 16, 16, 0xf0c14b);
+    framebuffer_fill(terminal_framebuffer, x + 28, y + 24, 16, 16, 0xe76f51);
+    framebuffer_fill(terminal_framebuffer, x + 48, y + 8, 24, 8, 0x8bd450);
+    framebuffer_fill(terminal_framebuffer, x + 48, y + 20, 16, 8, 0x8bd450);
+    framebuffer_fill(terminal_framebuffer, x + 48, y + 32, 24, 8, 0x8bd450);
+}
+
 void terminal_putchar(char character) {
     if (character == '\r') {
         return;

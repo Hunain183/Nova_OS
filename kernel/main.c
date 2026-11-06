@@ -116,6 +116,7 @@ void kmain(void) {
     }
 
     terminal_init(framebuffer, vga_memory);
+    terminal_draw_logo();
     shell_init();
     if (interrupts_init()) {
         serial_write("NovaOS: interrupts online\r\n");

@@ -6,6 +6,7 @@
 void terminal_init(struct limine_framebuffer *framebuffer,
                    volatile uint16_t *vga_memory);
 void terminal_clear(void);
+void terminal_draw_logo(void);
 void terminal_putchar(char character);
 void terminal_write(const char *text);
 
